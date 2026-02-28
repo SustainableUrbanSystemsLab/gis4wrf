@@ -1,4 +1,4 @@
-from typing import Optional, List, Iterable, Tuple, Any
+from typing import Optional, Union, List, Iterable, Tuple, Any
 import os
 import sys
 import platform
@@ -56,8 +56,25 @@ def find_mpiexec() -> str:
     return mpiexec_path
 
 @export
-def run_program(path: str, cwd: str, error_pattern: Optional[str]=None,
+def run_program(path: str, cwd: str, error_pattern: Union[None, str, List[str]]=None,
                 use_mpi: bool=False, mpi_processes: Optional[int]=None) -> Iterable[Tuple[str,Any]]:
+    if not os.path.isfile(path):
+        raise UserError(
+            f'Executable not found: {path}\n\n'
+            'Please check your WRF/WPS directory settings in the GIS4WRF options '
+            '(Settings -> Options -> GIS4WRF). You may need to download or re-download '
+            'the WRF/WPS distribution.')
+
+    if not os.access(path, os.X_OK):
+        raise UserError(
+            f'Executable is not runnable: {path}\n\n'
+            'The file exists but does not have execute permissions.')
+
+    if not os.path.isdir(cwd):
+        raise UserError(
+            f'Working directory not found: {cwd}\n\n'
+            'Please ensure the project run directory has been created.')
+
     if use_mpi:
         if mpi_processes is None:
             mpi_processes = multiprocessing.cpu_count()
@@ -68,7 +85,7 @@ def run_program(path: str, cwd: str, error_pattern: Optional[str]=None,
 
     return _run_program(args, cwd, error_pattern)
 
-def _run_program(args: List[str], cwd: str, error_pattern: Optional[str]=None) -> Iterable[Tuple[str,Any]]:
+def _run_program(args: List[str], cwd: str, error_pattern: Union[None, str, List[str]]=None) -> Iterable[Tuple[str,Any]]:
     yield ('log', 'Command: ' + ' '.join(args))
     yield ('log', 'Working directory: ' + cwd)
 
@@ -93,5 +110,8 @@ def _run_program(args: List[str], cwd: str, error_pattern: Optional[str]=None) -
 
     error = process.returncode != 0
     if not error and error_pattern:
-        error = error_pattern in stdout
+        if isinstance(error_pattern, (list, tuple)):
+            error = any(p in stdout for p in error_pattern)
+        else:
+            error = error_pattern in stdout
     yield ('error', error)

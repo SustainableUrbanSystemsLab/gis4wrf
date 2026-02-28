@@ -11,12 +11,19 @@ import shutil
 import subprocess
 import sysconfig
 import site
-import pkg_resources
 import random
+
+try:
+    from importlib.metadata import version as get_version, PackageNotFoundError
+except ImportError:
+    # Python 3.7 fallback
+    from importlib_metadata import version as get_version, PackageNotFoundError
+
+from packaging.version import Version
 
 DID_BOOTSTRAP = False
 
-# Python x.y version tuple, e.g. ('3', '6').
+# Python x.y version tuple, e.g. ('3', '9').
 PY_MAJORMINOR = platform.python_version_tuple()[:2]
 
 # name: distribution name, min: minimum version we require, install: version to be installed
@@ -39,61 +46,20 @@ Dependency = namedtuple('Dep', ['name', 'min', 'install'])
 # See the end of this script for more details on this.
 DEPS = [
     # Direct dependencies.
-
-    Dependency('f90nml', install='1.0.2', min=None),
-
-    # Indirect dependencies.
-    # Indirect dependencies are dependencies that we don't import directly in our code but
-    # that are required by one or more of the main dependencies above and that require a special version
-    # to be installed. Normally they would be automatically installed by one of the direct
-    # dependencies above, but this would nearly always install the latest version of that
-    # indirect dependency. The reason why we sometimes don't want that is mostly due to packaging
-    # bugs where the latest version is binary incompatible with older versions of numpy.
-    # And since we can't update numpy ourselves, we need to use older versions of those indirect
-    # dependencies which are built against older versions of numpy.
+    Dependency('f90nml', install='1.4.4', min=None),
+    Dependency('packaging', install='24.*', min='20.0'),
 ]
-# For some packages we need to use different versions depending on the Python version used.
-if PY_MAJORMINOR == ('3', '6'):
+
+# For netCDF4/cftime we use versions compatible with the Python version.
+if PY_MAJORMINOR <= ('3', '9'):
     DEPS += [
-        # NetCDF4 >= 1.3.0 is built against too recent numpy version.
-        Dependency('netCDF4',
-            install='1.2.9',
-            min=None),
-        # dependency of netCDF4
-        Dependency('cftime',
-            install='1.5.1',
-            min=None),
+        Dependency('netCDF4', install='1.5.7', min=None),
+        Dependency('cftime', install='1.5.1', min=None),
     ]
-elif PY_MAJORMINOR == ('3', '7'):
-    DEPS += [
-        Dependency('netCDF4',
-            install='1.4.2',
-            min=None),
-        # dependency of netCDF4
-        Dependency('cftime',
-            install='1.5.1',
-            min=None),
-    ]
-elif PY_MAJORMINOR == ('3', '9'):
-    DEPS += [
-        Dependency('netCDF4',
-            install='1.5.7',
-            min=None),
-        # dependency of netCDF4
-        Dependency('cftime',
-            install='1.5.1',
-            min=None),
-    ]
-# best effort
 else:
     DEPS += [
-        Dependency('netCDF4',
-            install='1.*',
-            min=None),
-        # dependency of netCDF4
-        Dependency('cftime',
-            install='1.*',
-            min=None),
+        Dependency('netCDF4', install='1.*', min=None),
+        Dependency('cftime', install='1.*', min=None),
     ]
 
 # Use a custom folder for the packages to avoid polluting the per-user site-packages.
@@ -113,6 +79,32 @@ else:
 INSTALL_PREFIX = os.path.join(DATA_HOME, 'gis4wrf', 'python' + ''.join(PY_MAJORMINOR))
 LOG_PATH = os.path.join(INSTALL_PREFIX, 'pip.log')
 
+
+def _get_installed_version(name: str) -> str:
+    """Get installed version of a package, or raise PackageNotFoundError."""
+    return get_version(name)
+
+
+def _get_package_location(name: str) -> str:
+    """Get the installation location of a package."""
+    try:
+        from importlib.metadata import packages_distributions
+        # Try to find via distribution files
+        dist = __import__('importlib.metadata', fromlist=['distribution']).distribution(name)
+        if hasattr(dist, '_path'):
+            return str(dist._path.parent)
+    except Exception:
+        pass
+    # Fallback: try importing the module and checking __file__
+    try:
+        mod = __import__(name)
+        if hasattr(mod, '__file__') and mod.__file__:
+            return str(Path(mod.__file__).parent.parent)
+    except Exception:
+        pass
+    return ''
+
+
 def bootstrap() -> Iterable[Tuple[str,Any]]:
     ''' Yields a stream of log information. '''
     global DID_BOOTSTRAP
@@ -125,22 +117,20 @@ def bootstrap() -> Iterable[Tuple[str,Any]]:
         if not path.startswith(INSTALL_PREFIX):
             # On macOS, some global paths are added as well which we don't want.
             continue
-        
+
         # Distribution installs of Python in Ubuntu return "dist-packages"
         # instead of "site-packages". But 'pip install --prefix ..' always
         # uses "site-packages" as the install location.
         path = path.replace('dist-packages', 'site-packages')
 
         yield ('log', 'Added {} as module search path'.format(path))
-        
+
         # Make sure directory exists as it may otherwise be ignored later on when we need it.
         # This is because Python seems to cache whether module search paths do not exist to avoid
         # redundant lookups.
         os.makedirs(path, exist_ok=True)
 
         site.addsitedir(path)
-        # pkg_resources doesn't listen to changes on sys.path.
-        pkg_resources.working_set.add_entry(path)
 
     # pip tries to install packages even if they are installed already in the
     # custom folder. To avoid that, we do the check ourselves.
@@ -151,30 +141,26 @@ def bootstrap() -> Iterable[Tuple[str,Any]]:
     cannot_update = []
     for dep in DEPS:
         try:
-            # Will raise DistributionNotFound if not found.
-            location = pkg_resources.get_distribution(dep.name).location
-            is_local = Path(INSTALL_PREFIX) in Path(location).parents
+            installed_version = _get_installed_version(dep.name)
+            location = _get_package_location(dep.name)
+            is_local = bool(location) and Path(INSTALL_PREFIX) in Path(location).parents
 
             if not dep.min:
                 installed.append((dep, is_local))
             else:
                 # There is a minimum version constraint, check that.
-                try:
-                    # Will raise VersionConflict on version mismatch.
-                    pkg_resources.get_distribution('{}>={}'.format(dep.name, dep.min))
+                if Version(installed_version) >= Version(dep.min):
                     installed.append((dep, is_local))
-                except pkg_resources.VersionConflict as exc:
+                else:
                     # Re-install is only possible if the previous version was installed by us.
                     if is_local:
                         needs_install.append(dep)
                     else:
                         # Continue without re-installing this package and hope for the best.
-                        # cannot_update is populated which can later be used to notify the user
-                        # that a newer version is required and has to be manually updated.
-                        cannot_update.append((dep, exc.dist.version))
+                        cannot_update.append((dep, installed_version))
                         installed.append((dep, False))
 
-        except pkg_resources.DistributionNotFound as exc:
+        except PackageNotFoundError:
             needs_install.append(dep)
 
     if needs_install:
@@ -182,9 +168,9 @@ def bootstrap() -> Iterable[Tuple[str,Any]]:
         yield ('log', 'Package directory: ' + INSTALL_PREFIX)
         # Remove everything as we can't upgrade packages when using --prefix
         # which may lead to multiple pkg-0.20.3.dist-info folders for different versions
-        # and that would lead to false positives with pkg_resources.get_distribution().
+        # and that would lead to false positives with importlib.metadata.
         if os.path.exists(INSTALL_PREFIX):
-            # Some randomness for the temp folder name, in case an old one is still lying around for some reason. 
+            # Some randomness for the temp folder name, in case an old one is still lying around for some reason.
             rnd = random.randint(10000, 99999)
             tmp_dir = INSTALL_PREFIX + '_tmp_{}'.format(rnd)
             # On Windows, rename + delete allows to re-create the folder immediately,
@@ -228,10 +214,6 @@ def bootstrap() -> Iterable[Tuple[str,Any]]:
 
         # Must use a single pip install invocation, otherwise dependencies of newly
         # installed packages get re-installed and we couldn't pin versions.
-        # E.g. 'pip install pandas==0.20.3' will install pandas, but doing
-        #      'pip install xarray==0.10.0' after that would re-install pandas (latest version)
-        #      as it's a dependency of xarray.
-        # This is all necessary due to limitations of pip's --prefix option.
         args = [python, '-m', 'pip', 'install', '--prefix', INSTALL_PREFIX] + req_specs
         yield ('log', ' '.join(args))
         for line in run_subprocess(args, LOG_PATH):

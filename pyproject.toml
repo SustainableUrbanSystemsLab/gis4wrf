@@ -1,0 +1,58 @@
+[project]
+name = "gis4wrf"
+version = "0.15.0"
+description = "Toolkit for pre- and post-processing, visualizing, and running simulations in WRF"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    { name = "D. Meyer" },
+    { name = "M. Riechert" },
+]
+keywords = ["WRF", "WPS", "GIS", "NetCDF", "GRIB", "NWP", "weather", "atmospheric science"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+dependencies = [
+    "f90nml>=1.0.2,<2",
+    "netCDF4>=1.5.7,<2",
+    "cftime>=1.5.1,<2",
+    "packaging>=20.0",
+    "requests",
+    "numpy",
+    "matplotlib>=3.8,<4",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+]
+qgis = [
+    "PyQt5",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["gis4wrf"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=7",
+]

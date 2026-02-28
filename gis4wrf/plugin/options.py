@@ -12,6 +12,8 @@ from gis4wrf.core import find_mpiexec
 from gis4wrf.core.util import export
 from gis4wrf.plugin.broadcast import Broadcast
 
+EXE_SUFFIX = '.exe' if platform.system() == 'Windows' else ''
+
 WORKING_DIR_DEFAULT_NAME = 'gis4wrf'
 
 SETTINGS_NAMESPACE = 'gis4wrf/'
@@ -139,7 +141,7 @@ class Options(object):
     def geogrid_exe(self) -> Optional[str]:
         if not self.wps_dir:
             return None
-        return os.path.join(self.wps_dir, 'geogrid.exe')
+        return os.path.join(self.wps_dir, 'geogrid' + EXE_SUFFIX)
 
     @property
     def geogrid_tbl_path(self) -> Optional[str]:
@@ -151,7 +153,7 @@ class Options(object):
     def ungrib_exe(self) -> Optional[str]:
         if not self.wps_dir:
             return None
-        return os.path.join(self.wps_dir, 'ungrib.exe')
+        return os.path.join(self.wps_dir, 'ungrib' + EXE_SUFFIX)
 
     @property
     def ungrib_vtable_dir(self) -> Optional[str]:
@@ -163,7 +165,7 @@ class Options(object):
     def metgrid_exe(self) -> Optional[str]:
         if not self.wps_dir:
             return None
-        return os.path.join(self.wps_dir, 'metgrid.exe')
+        return os.path.join(self.wps_dir, 'metgrid' + EXE_SUFFIX)
 
     @property
     def wrf_bin_dir(self) -> Optional[str]:
@@ -179,13 +181,13 @@ class Options(object):
     def real_exe(self) -> Optional[str]:
         if not self.wrf_dir:
             return None
-        return os.path.join(self.wrf_bin_dir, 'real.exe')
+        return os.path.join(self.wrf_bin_dir, 'real' + EXE_SUFFIX)
 
     @property
     def wrf_exe(self) -> Optional[str]:
         if not self.wrf_dir:
             return None
-        return os.path.join(self.wrf_bin_dir, 'wrf.exe')
+        return os.path.join(self.wrf_bin_dir, 'wrf' + EXE_SUFFIX)
 
     @property
     def wrf_namelist_path(self) -> Optional[str]:

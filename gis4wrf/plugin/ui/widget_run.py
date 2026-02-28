@@ -270,8 +270,7 @@ class RunWidget(QWidget):
 
         # WRF/WPS does not use exit codes to indicate success/failure,
         # therefore in addition we look for a pattern in the program output.
-        # TODO add 'FATAL' as patterm
-        wrf_error_pattern = 'ERROR'
+        wrf_error_pattern = ['ERROR', 'FATAL']
 
         use_mpi = supports_mpi and self.options.mpi_enabled
         if use_mpi and '-nompi' in path:
@@ -311,6 +310,7 @@ class LogSeverityHighlighter(QSyntaxHighlighter):
         'inform': (QColor('#B5CEA8'), False),
         'warning': (QColor('orange'), False),
         'error': (Qt.red, False),
+        'fatal': (Qt.red, True),
         'success': (Qt.darkGreen, True),
     }
 

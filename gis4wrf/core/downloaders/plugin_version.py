@@ -1,8 +1,11 @@
+# GIS4WRF (https://doi.org/10.5281/zenodo.1288569)
+# Copyright (c) 2018 D. Meyer and M. Riechert. Licensed under MIT.
+
 import io
 from pathlib import Path
 import xml.etree.ElementTree as ET
 import configparser
-from distutils.version import StrictVersion
+from packaging.version import Version
 import requests
 
 from gis4wrf.core.util import export
@@ -19,7 +22,7 @@ def get_latest_gis4wrf_version() -> str:
     if not version_elements:
         raise RuntimeError('No version found')
     versions = [i.text for i in version_elements]
-    latest_version = sorted(versions, key=StrictVersion)[-1]
+    latest_version = sorted(versions, key=Version)[-1]
     return latest_version
 
 @export
@@ -30,4 +33,4 @@ def get_installed_gis4wrf_version() -> str:
 
 @export
 def is_newer_version(a: str, b: str) -> bool:
-    return StrictVersion(a) > StrictVersion(b)
+    return Version(a) > Version(b)

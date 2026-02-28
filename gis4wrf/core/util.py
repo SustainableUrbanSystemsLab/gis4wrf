@@ -13,12 +13,36 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 
-# for import by other modules to avoid repeating UseExceptions()
-from osgeo import gdal, ogr, osr, gdal_array
-gdal.UseExceptions()
-ogr.UseExceptions()
-osr.UseExceptions()
-gdal.SetConfigOption('GDAL_VRT_ENABLE_PYTHON', 'YES')
+# Lazy GDAL imports -- loaded on first access so that modules
+# not requiring GDAL (e.g. namelist handling) can be imported without it.
+# GDAL is provided by QGIS at runtime and is not pip-installable on all platforms.
+_gdal_modules = {}
+
+def _init_gdal():
+    if _gdal_modules:
+        return
+    from osgeo import gdal as _g, ogr as _o, osr as _s, gdal_array as _ga
+    _g.UseExceptions()
+    _o.UseExceptions()
+    _s.UseExceptions()
+    _g.SetConfigOption('GDAL_VRT_ENABLE_PYTHON', 'YES')
+    _gdal_modules['gdal'] = _g
+    _gdal_modules['ogr'] = _o
+    _gdal_modules['osr'] = _s
+    _gdal_modules['gdal_array'] = _ga
+
+class _LazyGDAL:
+    """Proxy that lazily initializes GDAL on first attribute access."""
+    def __init__(self, name):
+        object.__setattr__(self, '_name', name)
+    def __getattr__(self, attr):
+        _init_gdal()
+        return getattr(_gdal_modules[self._name], attr)
+
+gdal = _LazyGDAL('gdal')
+ogr = _LazyGDAL('ogr')
+osr = _LazyGDAL('osr')
+gdal_array = _LazyGDAL('gdal_array')
 
 def export(fn):
     ''' Function decorator that adds the function to `__all__`.

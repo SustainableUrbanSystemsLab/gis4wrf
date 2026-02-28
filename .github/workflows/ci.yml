@@ -1,27 +1,36 @@
 name: CI
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   ci:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    
-    - uses: conda-incubator/setup-miniconda@v2
-    
-    # Login shell needed for conda to activate env
+    - uses: actions/checkout@v4
+
+    - uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - uses: conda-incubator/setup-miniconda@v3
+
+    # GDAL and PyQt are not pip-installable, use conda for those
     - shell: bash -l {0}
-      run: conda install numpy gdal requests pyqt pyyaml pytest
-    
+      run: conda install numpy gdal requests pyqt pyyaml
+
+    # Install project dependencies with uv (into the conda env)
+    - shell: bash -l {0}
+      run: |
+        uv pip install --system packaging f90nml pytest
+
     - shell: bash -l {0}
       run: python build.py
-    
+
     - shell: bash -l {0}
       run: python -m pytest -v -s
 
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: package
         path: gis4wrf.zip

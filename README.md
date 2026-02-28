@@ -12,6 +12,13 @@ GIS4WRF is a free and open source [QGIS](https://qgis.org/) plug-in to help rese
 <p align="center">Configure, run and visualize a WRF simulation in GIS4WRF</p>
 
 
+## Atlanta Example Case
+
+For a complete scripted runbook (setup, serial/MPI runs, and all-field plotting) see:
+
+- [README_ATLANTA.md](README_ATLANTA.md)
+
+
 ## Citing
 If you use GIS4WRF in a published work, please cite both the paper (https://doi.org/10.1016/j.envsoft.2018.10.018), and the specific version of GIS4WRF you are using (https://doi.org/10.5281/zenodo.1288569).
 

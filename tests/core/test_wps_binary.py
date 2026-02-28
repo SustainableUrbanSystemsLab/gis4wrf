@@ -2,7 +2,11 @@
 # Copyright (c) 2018 D. Meyer and M. Riechert. Licensed under MIT.
 
 import os
+import pytest
 import numpy as np
+
+pytest.importorskip("osgeo", reason="GDAL not available")
+
 import gis4wrf.core
 from gis4wrf.core.writers.wps_binary import compute_inv_scale_factor
 

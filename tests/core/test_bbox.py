@@ -1,6 +1,9 @@
 # GIS4WRF (https://doi.org/10.5281/zenodo.1288569)
 # Copyright (c) 2018 D. Meyer and M. Riechert. Licensed under MIT.
 
+import pytest
+pytest.importorskip("osgeo", reason="GDAL not available")
+
 from gis4wrf.core.project import (
     get_bbox_from_grid_spec, get_parent_bbox_from_child_grid_spec,
     get_bbox_center, Project

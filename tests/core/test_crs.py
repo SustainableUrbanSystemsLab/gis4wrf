@@ -2,6 +2,7 @@
 # Copyright (c) 2019 D. Meyer and M. Riechert. Licensed under MIT.
 
 import pytest
+pytest.importorskip("osgeo", reason="GDAL not available")
 
 from gis4wrf.core import (
     CRS, LonLat, Coordinate2D

@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Union
 import os
 import sys
 import signal
@@ -64,7 +64,7 @@ class TaskThread(QThread):
 class ProgramThread(QThread):
     output = pyqtSignal(str)
 
-    def __init__(self, path: str, cwd: str, error_pattern: Optional[str]=None,
+    def __init__(self, path: str, cwd: str, error_pattern: Union[None, str, List[str]]=None,
                  use_mpi: bool=False, mpi_processes: Optional[int]=None) -> None:
         super().__init__()
         self.path = path
