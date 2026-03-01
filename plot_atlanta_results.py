@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import html
+from datetime import datetime
 import math
 import re
 import sys
@@ -513,6 +514,7 @@ def plot_nonspatial_variable(
 
 
 def write_index(entries: Sequence[PlotEntry], out_dir: Path) -> None:
+    generated_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
     cards: List[str] = []
     for entry in sorted(entries, key=lambda e: e.var_name):
         subtitle_parts = []
@@ -562,6 +564,10 @@ def write_index(entries: Sequence[PlotEntry], out_dir: Path) -> None:
       margin: 0;
       color: var(--muted);
     }}
+    p.generated {{
+      margin-top: 4px;
+      font-size: 0.85rem;
+    }}
     main {{
       padding: 18px 24px 30px;
       display: grid;
@@ -600,6 +606,7 @@ def write_index(entries: Sequence[PlotEntry], out_dir: Path) -> None:
   <header>
     <h1>Atlanta WRF Output Plots</h1>
     <p class="subtitle">Rendered {len(entries)} numeric variables from wrfout files</p>
+    <p class="subtitle generated">Generated {generated_at}</p>
   </header>
   <main>
     {"".join(cards)}
